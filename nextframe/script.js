@@ -1,3 +1,6 @@
+/* script.js */
+let uploadedImageBase64 = null;
+
 function validateInputs() {
   const requiredFields = ['projectName', 'apiKey', 'prompt', 'frameCount'];
   let valid = true;
@@ -32,7 +35,8 @@ function saveProject() {
     apiKey: document.getElementById("apiKey").value,
     prompt: document.getElementById("prompt").value,
     frameCount: document.getElementById("frameCount").value,
-    imageSize: document.getElementById("imageSize").value
+    imageSize: document.getElementById("imageSize").value,
+    inputImageBase64: uploadedImageBase64
   };
   localStorage.setItem(name, JSON.stringify(data));
   loadProjectList();
@@ -45,6 +49,17 @@ function loadProject(name) {
   document.getElementById("prompt").value = data.prompt;
   document.getElementById("frameCount").value = data.frameCount;
   document.getElementById("imageSize").value = data.imageSize;
+  uploadedImageBase64 = data.inputImageBase64 || null;
+
+  const uploadedPreview = document.getElementById("uploadedPreview");
+  uploadedPreview.innerHTML = '';
+  if (uploadedImageBase64) {
+    const uploaded = document.createElement("img");
+    uploaded.src = `data:image/png;base64,${uploadedImageBase64}`;
+    uploaded.className = 'preview-frame';
+    uploaded.alt = '업로드 이미지';
+    uploadedPreview.appendChild(uploaded);
+  }
 }
 
 function loadProjectList() {
@@ -67,28 +82,57 @@ function newProject() {
   document.getElementById("frameCount").value = '';
   document.getElementById("imageSize").value = '1024x576';
   document.getElementById("inputImage").value = null;
+  document.getElementById("uploadedPreview").innerHTML = '';
+  document.getElementById("output").innerHTML = '';
+  uploadedImageBase64 = null;
 }
 
 function generateImages() {
   if (!validateInputs()) return;
   const inputImage = document.getElementById("inputImage").files[0];
   const frameCount = parseInt(document.getElementById("frameCount").value);
+  const uploadedPreview = document.getElementById("uploadedPreview");
   const output = document.getElementById("output");
   output.innerHTML = '';
 
   if (inputImage) {
     const reader = new FileReader();
     reader.onload = function () {
-      const base64Image = reader.result.split(",")[1];
+      uploadedImageBase64 = reader.result.split(",")[1];
+
+      // 업로드된 이미지 미리보기 표시
+      const uploaded = document.createElement("img");
+      uploaded.src = reader.result;
+      uploaded.className = 'preview-frame';
+      uploaded.alt = '업로드 이미지';
+      uploadedPreview.innerHTML = '';
+      uploadedPreview.appendChild(uploaded);
+
       for (let i = 1; i <= frameCount; i++) {
         const img = document.createElement("img");
-        img.src = `data:image/png;base64,${base64Image}`; // 여기에 실제 생성된 이미지로 대체 필요
+        img.src = `data:image/png;base64,${uploadedImageBase64}`;
         img.className = 'preview-frame';
         img.alt = `프레임 ${i}`;
         output.appendChild(img);
       }
     };
     reader.readAsDataURL(inputImage);
+  } else if (uploadedImageBase64) {
+    // 기존에 저장된 Base64 이미지가 있는 경우
+    const uploaded = document.createElement("img");
+    uploaded.src = `data:image/png;base64,${uploadedImageBase64}`;
+    uploaded.className = 'preview-frame';
+    uploaded.alt = '업로드 이미지';
+    uploadedPreview.innerHTML = '';
+    uploadedPreview.appendChild(uploaded);
+
+    for (let i = 1; i <= frameCount; i++) {
+      const img = document.createElement("img");
+      img.src = `data:image/png;base64,${uploadedImageBase64}`;
+      img.className = 'preview-frame';
+      img.alt = `프레임 ${i}`;
+      output.appendChild(img);
+    }
   } else {
     alert("이미지를 먼저 업로드해주세요. 이후 프레임은 이 이미지를 기반으로 생성됩니다.");
   }

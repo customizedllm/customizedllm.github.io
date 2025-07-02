@@ -68,6 +68,10 @@ input.error, textarea.error {
   justify-content: flex-start;
 }
 
+#uploadedPreview {
+  margin: 1em;
+}
+
 .preview-frame {
   width: 240px;
   height: auto;
