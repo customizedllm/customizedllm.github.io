@@ -66,12 +66,24 @@ function newProject() {
   document.getElementById("prompt").value = '';
   document.getElementById("frameCount").value = '';
   document.getElementById("imageSize").value = '1024x576';
+  document.getElementById("inputImage").value = null;
 }
 
 function generateImages() {
   if (!validateInputs()) return;
-  alert("이미지 생성 로직은 여기에 구현됩니다.");
-  // 실제 OpenAI API 호출 로직 구현 필요
+  const inputImage = document.getElementById("inputImage").files[0];
+
+  if (inputImage) {
+    const reader = new FileReader();
+    reader.onload = function () {
+      const base64Image = reader.result.split(",")[1];
+      console.log("Base64 이미지 준비 완료, 다음 프레임 생성에 사용 가능:", base64Image);
+      // 여기에 다음 프레임 생성 API 호출 로직 작성 가능
+    };
+    reader.readAsDataURL(inputImage);
+  } else {
+    alert("이미지를 먼저 업로드해주세요. 이후 프레임은 이 이미지를 기반으로 생성됩니다.");
+  }
 }
 
 window.onload = loadProjectList;
