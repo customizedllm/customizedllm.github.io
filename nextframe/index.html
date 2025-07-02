@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -9,7 +10,7 @@
   <div class="container">
     <!-- 입력 영역 -->
     <div class="input-section">
-      <h2>🎥 새 프로젝트</h2>
+      <h2>🎥 새 프리제트</h2>
       <input type="text" id="projectName" placeholder="프로젝트 이름" /><br>
       <input type="password" id="apiKey" placeholder="OpenAI API Key" /><br>
       <textarea id="prompt" rows="4" placeholder="프롬프트 입력"></textarea><br>
@@ -20,8 +21,9 @@
         <option value="512x512">512x512</option>
       </select><br>
       <input type="file" id="inputImage" accept="image/*" /><br>
-      <button onclick="generateImages()">🎬 이미지 생성</button>
+      <button onclick="generateImages()">🎨 이미지 생성</button>
       <button onclick="saveProject()">💾 저장</button>
+      <button onclick="downloadZip()">💾 ZIP 다운로드</button>
       <div id="errorBox"></div>
     </div>
 
