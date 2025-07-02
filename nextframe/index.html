@@ -1,54 +1,40 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <title>AI 이미지 프레임 생성기</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>프레임 영상 생성기</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="container">
     <div class="input-section">
-      <h2>🖼️ 프레임 생성</h2>
-      <div id="errorBox"></div>
-      <label>프로젝트 이름</label>
-      <input type="text" id="projectName" placeholder="예: suncheon-ride-01" />
-
-      <label>OpenAI API 키</label>
-      <input type="text" id="apiKey" placeholder="sk-..." />
-
-      <label>프롬프트</label>
-      <textarea id="prompt" rows="3" placeholder="예: A first-person view of a bike road through Suncheon Bay wetlands..."></textarea>
-
-      <label>프레임 수</label>
-      <input type="number" id="frameCount" min="1" placeholder="예: 30" />
-
-      <label>해상도</label>
+      <h2>새 프로젝트</h2>
+      <input id="projectName" type="text" placeholder="프로젝트 이름 (필수)" />
+      <input id="apiKey" type="text" placeholder="OpenAI API Key (필수)" />
+      <textarea id="prompt" placeholder="프롬프트를 입력하세요 (필수)"></textarea>
+      <input id="frameCount" type="number" placeholder="프레임 수 (예: 10)" />
       <select id="imageSize">
-        <option value="1024x576">1024x576 (16:9)</option>
-        <option value="1280x720">1280x720 (HD)</option>
-        <option value="1920x1080">1920x1080 (Full HD)</option>
-        <option value="2048x1152">2048x1152 (2K)</option>
+        <option value="256x256">256x256</option>
+        <option value="512x512">512x512</option>
+        <option value="1024x1024" selected>1024x1024</option>
       </select>
-
-      <label>초기 이미지 (선택)</label>
-      <input type="file" id="inputImage" accept="image/*" />
+      <input id="inputImage" type="file" accept="image/*" />
       <div id="uploadedPreview"></div>
-
-      <button onclick="generateImages()">🎬 이미지 생성</button>
-      <button onclick="downloadZip()">💾 ZIP 저장</button>
+      <button onclick="generateImages()">이미지 생성</button>
+      <button onclick="downloadZip()">ZIP으로 저장</button>
+      <div id="errorBox"></div>
+      <div id="output"></div>
     </div>
 
     <div class="project-section">
-      <h2>📂 지난 프로젝트</h2>
-      <ul id="projectList"></ul>
+      <h2>기존 프로젝트</h2>
       <button onclick="newProject()">➕ 새 프로젝트</button>
-
-      <h3>🖼️ 출력 이미지</h3>
-      <div id="output"></div>
+      <ul id="projectList"></ul>
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.7.1/dist/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

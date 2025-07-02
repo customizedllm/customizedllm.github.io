@@ -103,15 +103,12 @@ function generateImages() {
   const prompt = document.getElementById("prompt").value.trim();
   const frameCount = parseInt(document.getElementById("frameCount").value);
   const size = document.getElementById("imageSize").value;
-
-  let [width, height] = size.split("x").map(Number);
+  const [width, height] = size.split("x").map(Number);
 
   const headers = {
     "Content-Type": "application/json",
     "Authorization": `Bearer ${apiKey}`,
   };
-
-  const uploadedImg = uploadedPreview.querySelector("img")?.src;
 
   async function generateFrame(i) {
     const skeleton = document.createElement("div");
@@ -120,6 +117,7 @@ function generateImages() {
     output.appendChild(skeleton);
 
     const body = {
+      model: "dall-e-2",
       prompt: `${prompt} (frame ${i})`,
       n: 1,
       size: `${width}x${height}`,
@@ -133,7 +131,11 @@ function generateImages() {
         body: JSON.stringify(body),
       });
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const errorData = await res.json();
+        const msg = errorData?.error?.message || `HTTP ${res.status}`;
+        throw new Error(msg);
+      }
 
       const data = await res.json();
       const b64 = data.data?.[0]?.b64_json;
