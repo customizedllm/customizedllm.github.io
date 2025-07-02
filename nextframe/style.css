@@ -1,0 +1,61 @@
+body {
+  font-family: sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  display: flex;
+  height: 100vh;
+}
+
+.input-section, .project-section {
+  padding: 1em;
+  overflow-y: auto;
+}
+
+.input-section {
+  width: 60%;
+  border-right: 1px solid #ccc;
+  background: #f9f9f9;
+}
+
+.project-section {
+  width: 40%;
+  background: #fff;
+}
+
+textarea, input, select {
+  width: 100%;
+  margin-bottom: 0.5em;
+  padding: 0.5em;
+  font-size: 1em;
+}
+
+ul#projectList {
+  list-style: none;
+  padding: 0;
+}
+
+ul#projectList li {
+  padding: 0.5em;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+}
+
+ul#projectList li:hover {
+  background: #f0f0f0;
+}
+
+input.error, textarea.error {
+  border: 2px solid red;
+  background-color: #fff0f0;
+}
+
+#errorBox {
+  color: white;
+  background-color: crimson;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 5px;
+}

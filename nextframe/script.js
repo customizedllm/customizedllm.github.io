@@ -1,45 +1,77 @@
-async function generateImages() {
-  const apiKey = document.getElementById("apiKey").value;
-  const basePrompt = document.getElementById("prompt").value;
-  const frameCount = parseInt(document.getElementById("frameCount").value);
-  const imageSize = document.getElementById("imageSize").value;
-  const outputDiv = document.getElementById("output");
+function validateInputs() {
+  const requiredFields = ['projectName', 'apiKey', 'prompt', 'frameCount'];
+  let valid = true;
 
-  if (!apiKey || !basePrompt || !frameCount || !imageSize) {
-    alert("모든 항목을 입력해주세요.");
-    return;
-  }
-
-  outputDiv.innerHTML = '';
-  for (let i = 0; i < frameCount; i++) {
-    const prompt = `${basePrompt}, frame ${i + 1}, slightly forward`;
-    outputDiv.innerHTML += `<p>📸 생성 중: ${i + 1}/${frameCount}</p>`;
-
-    const response = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "dall-e-3",
-        prompt: prompt,
-        n: 1,
-        size: imageSize
-      })
-    });
-
-    const data = await response.json();
-
-    if (data.error) {
-      outputDiv.innerHTML += `<p style="color:red;">🚫 에러: ${data.error.message}</p>`;
-      break;
+  requiredFields.forEach(id => {
+    const field = document.getElementById(id);
+    if (!field.value.trim()) {
+      field.classList.add('error');
+      showError(`❗ '${field.placeholder || id}' 필드를 입력해주세요.`);
+      valid = false;
+    } else {
+      field.classList.remove('error');
     }
+  });
 
-    const img = document.createElement("img");
-    img.src = data.data[0].url;
-    outputDiv.appendChild(img);
+  return valid;
+}
 
-    await new Promise(r => setTimeout(r, 3000)); // OpenAI rate limit 조정
+function showError(message) {
+  let errorBox = document.getElementById("errorBox");
+  errorBox.innerText = message;
+  setTimeout(() => {
+    errorBox.innerText = '';
+  }, 3000);
+}
+
+function saveProject() {
+  if (!validateInputs()) return;
+  const name = document.getElementById("projectName").value || `Project ${Date.now()}`;
+  const data = {
+    name: name,
+    apiKey: document.getElementById("apiKey").value,
+    prompt: document.getElementById("prompt").value,
+    frameCount: document.getElementById("frameCount").value,
+    imageSize: document.getElementById("imageSize").value
+  };
+  localStorage.setItem(name, JSON.stringify(data));
+  loadProjectList();
+}
+
+function loadProject(name) {
+  const data = JSON.parse(localStorage.getItem(name));
+  document.getElementById("projectName").value = data.name;
+  document.getElementById("apiKey").value = data.apiKey;
+  document.getElementById("prompt").value = data.prompt;
+  document.getElementById("frameCount").value = data.frameCount;
+  document.getElementById("imageSize").value = data.imageSize;
+}
+
+function loadProjectList() {
+  const list = document.getElementById("projectList");
+  list.innerHTML = '';
+  for (let key in localStorage) {
+    if (localStorage.hasOwnProperty(key)) {
+      const li = document.createElement("li");
+      li.innerText = key;
+      li.onclick = () => loadProject(key);
+      list.appendChild(li);
+    }
   }
 }
+
+function newProject() {
+  document.getElementById("projectName").value = '';
+  document.getElementById("apiKey").value = '';
+  document.getElementById("prompt").value = '';
+  document.getElementById("frameCount").value = '';
+  document.getElementById("imageSize").value = '1024x576';
+}
+
+function generateImages() {
+  if (!validateInputs()) return;
+  alert("이미지 생성 로직은 여기에 구현됩니다.");
+  // 실제 OpenAI API 호출 로직 구현 필요
+}
+
+window.onload = loadProjectList;
