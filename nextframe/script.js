@@ -42,6 +42,26 @@ function loadFromDB(id, callback) {
   req.onsuccess = () => callback(req.result);
 }
 
+function deleteFromDB(id) {
+  const tx = db.transaction(STORE_NAME, "readwrite");
+  tx.objectStore(STORE_NAME).delete(id);
+  tx.oncomplete = () => {
+    if (currentProjectId === id) {
+      currentProjectId = null;
+      frames = [];
+      lastSuccessFrame = 0;
+      uploadedPreview.innerHTML = "";
+      output.innerHTML = "";
+      document.getElementById("projectName").value = "";
+      document.getElementById("apiKey").value = "";
+      document.getElementById("prompt").value = "";
+      document.getElementById("frameCount").value = "";
+      document.getElementById("imageSize").value = "1024x1024";
+    }
+    loadProjectList();
+  };
+}
+
 function loadProjectList() {
   const list = document.getElementById("projectList");
   list.innerHTML = "";
