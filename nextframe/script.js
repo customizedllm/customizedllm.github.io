@@ -3,36 +3,56 @@ const output = document.getElementById("output");
 const uploadedPreview = document.getElementById("uploadedPreview");
 const errorBox = document.getElementById("errorBox");
 
-let frames = []; // base64 이미지 저장용
+let frames = []; // base64 이미지 저장용 (IndexedDB에 저장)
 let lastSuccessFrame = 0;
-let isGenerating = false; // 중복 호출 방지
+let isGenerating = false;
 
-function validateInputs() {
-  const projectName = document.getElementById("projectName").value.trim();
-  const apiKey = document.getElementById("apiKey").value.trim();
-  const prompt = document.getElementById("prompt").value.trim();
-  const frameCount = parseInt(document.getElementById("frameCount").value);
+let db;
+const DB_NAME = "DeforumDB";
+const STORE_NAME = "projects";
 
-  if (!projectName || !apiKey || !prompt || !frameCount) {
-    errorBox.innerText = "⚠ 모든 항목을 입력해주세요.";
-    return false;
-  }
-  errorBox.innerText = "";
-  return true;
+function initDB() {
+  const request = indexedDB.open(DB_NAME, 1);
+  request.onerror = (e) => console.error("DB 오류", e);
+  request.onsuccess = (e) => {
+    db = e.target.result;
+    loadProjectList();
+  };
+  request.onupgradeneeded = (e) => {
+    const db = e.target.result;
+    if (!db.objectStoreNames.contains(STORE_NAME)) {
+      db.createObjectStore(STORE_NAME);
+    }
+  };
 }
 
-function newProject() {
-  document.getElementById("projectName").value = "";
-  document.getElementById("apiKey").value = "";
-  document.getElementById("prompt").value = "";
-  document.getElementById("frameCount").value = "";
-  document.getElementById("imageSize").value = "1024x576";
-  document.getElementById("inputImage").value = "";
-  uploadedPreview.innerHTML = "";
-  output.innerHTML = "";
-  frames = [];
-  lastSuccessFrame = 0;
-  autoSave();
+function saveToDB(name, data) {
+  const tx = db.transaction(STORE_NAME, "readwrite");
+  tx.objectStore(STORE_NAME).put(data, name);
+}
+
+function loadFromDB(name, callback) {
+  const tx = db.transaction(STORE_NAME, "readonly");
+  const req = tx.objectStore(STORE_NAME).get(name);
+  req.onsuccess = () => callback(req.result);
+}
+
+function loadProjectList() {
+  const list = document.getElementById("projectList");
+  list.innerHTML = "";
+  const tx = db.transaction(STORE_NAME, "readonly");
+  const store = tx.objectStore(STORE_NAME);
+  const req = store.openCursor();
+  req.onsuccess = (e) => {
+    const cursor = e.target.result;
+    if (cursor) {
+      const li = document.createElement("li");
+      li.innerText = cursor.key;
+      li.onclick = () => loadProject(cursor.key);
+      list.appendChild(li);
+      cursor.continue();
+    }
+  };
 }
 
 function autoSave() {
@@ -47,61 +67,67 @@ function autoSave() {
     frames: frames,
     lastSuccessFrame: lastSuccessFrame
   };
-  localStorage.setItem(name, JSON.stringify(projectData));
+  saveToDB(name, projectData);
   loadProjectList();
 }
 
-function loadProjectList() {
-  const list = document.getElementById("projectList");
-  list.innerHTML = "";
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    const li = document.createElement("li");
-    li.innerText = key;
-    li.onclick = () => loadProject(key);
-    list.appendChild(li);
-  }
-}
-
 function loadProject(name) {
-  const data = JSON.parse(localStorage.getItem(name));
-  if (!data) return;
+  loadFromDB(name, (data) => {
+    if (!data) return;
+    document.getElementById("projectName").value = name;
+    document.getElementById("apiKey").value = data.apiKey;
+    document.getElementById("prompt").value = data.prompt;
+    document.getElementById("frameCount").value = data.frameCount;
+    document.getElementById("imageSize").value = data.imageSize;
+    lastSuccessFrame = data.lastSuccessFrame || 0;
 
-  document.getElementById("projectName").value = name;
-  document.getElementById("apiKey").value = data.apiKey;
-  document.getElementById("prompt").value = data.prompt;
-  document.getElementById("frameCount").value = data.frameCount;
-  document.getElementById("imageSize").value = data.imageSize;
-  lastSuccessFrame = data.lastSuccessFrame || 0;
+    if (data.inputImageBase64) {
+      const img = document.createElement("img");
+      img.src = data.inputImageBase64;
+      img.width = 256;
+      img.style.cursor = "pointer";
+      img.onclick = () => {
+        const win = window.open();
+        win.document.write(`<img src="${img.src}" style="max-width:100%">`);
+      };
+      uploadedPreview.innerHTML = "";
+      uploadedPreview.appendChild(img);
+    } else {
+      uploadedPreview.innerHTML = "";
+    }
 
-  if (data.inputImageBase64) {
-    const img = document.createElement("img");
-    img.src = data.inputImageBase64;
-    img.width = 256;
-    img.style.cursor = "pointer";
-    img.onclick = () => window.open(img.src, "_blank");
-    uploadedPreview.innerHTML = "";
-    uploadedPreview.appendChild(img);
-  } else {
-    uploadedPreview.innerHTML = "";
-  }
-
-  output.innerHTML = "";
-  frames = data.frames || [];
-  frames.forEach((src, i) => {
-    const img = document.createElement("img");
-    img.src = src;
-    img.alt = `frame_${i + 1}`;
-    img.width = 256;
-    img.style.cursor = "pointer";
-    img.onclick = () => window.open(img.src, "_blank");
-    output.appendChild(img);
+    output.innerHTML = "";
+    frames = data.frames || [];
+    frames.forEach((src, i) => {
+      const img = document.createElement("img");
+      img.src = src;
+      img.alt = `frame_${i + 1}`;
+      img.width = 256;
+      img.style.cursor = "pointer";
+      img.onclick = () => {
+        const win = window.open();
+        win.document.write(`<img src="${img.src}" style="max-width:100%">`);
+      };
+      output.appendChild(img);
+    });
   });
 }
 
+function validateInputs() {
+  const projectName = document.getElementById("projectName").value.trim();
+  const apiKey = document.getElementById("apiKey").value.trim();
+  const prompt = document.getElementById("prompt").value.trim();
+  const frameCount = parseInt(document.getElementById("frameCount").value);
+  if (!projectName || !apiKey || !prompt || !frameCount) {
+    errorBox.innerText = "⚠ 모든 항목을 입력해주세요.";
+    return false;
+  }
+  errorBox.innerText = "";
+  return true;
+}
+
 function generateImages(startFrom = 1) {
-  if (!validateInputs()) return;
-  if (isGenerating) return;
+  if (!validateInputs() || isGenerating) return;
   isGenerating = true;
 
   if (startFrom === 1) {
@@ -114,7 +140,7 @@ function generateImages(startFrom = 1) {
   const prompt = document.getElementById("prompt").value.trim();
   const frameCount = parseInt(document.getElementById("frameCount").value);
   const size = document.getElementById("imageSize").value;
-  const [width, height] = size.split("x").map(Number);
+  const [width, height] = size.split("x");
 
   const headers = {
     "Content-Type": "application/json",
@@ -143,10 +169,10 @@ function generateImages(startFrom = 1) {
       });
 
       const data = await res.json();
-
       if (!res.ok) {
-        const errorDetails = `코드: ${data?.error?.code || 'unknown'}\n메시지: ${data?.error?.message || '에러 발생'}\n매개변수: ${data?.error?.param || '없음'}`;
-        throw new Error(errorDetails);
+        const error = data?.error || {};
+        const msg = `코드: ${error.code || 'unknown'}\n메시지: ${error.message || '에러 발생'}\n매개변수: ${error.param || '없음'}`;
+        throw new Error(msg);
       }
 
       const b64 = data.data?.[0]?.b64_json;
@@ -156,7 +182,10 @@ function generateImages(startFrom = 1) {
         img.alt = `frame_${i}`;
         img.width = 256;
         img.style.cursor = "pointer";
-        img.onclick = () => window.open(img.src, "_blank");
+        img.onclick = () => {
+          const win = window.open();
+          win.document.write(`<img src="${img.src}" style="max-width:100%">`);
+        };
         output.replaceChild(img, skeleton);
         frames.push(img.src);
         lastSuccessFrame = i;
@@ -167,8 +196,8 @@ function generateImages(startFrom = 1) {
         return false;
       }
     } catch (err) {
-      skeleton.innerText = `프레임 ${i} 오류:\n${err.message}`;
-      errorBox.innerText = `⚠ 프레임 ${i} 생성 중 오류 발생: ${err.message}`;
+      skeleton.innerText = `프레임 ${i} 오류: ${err.message}`;
+      errorBox.innerText = `⚠ 프레임 ${i} 생성 중 오류: ${err.message}`;
       return false;
     }
   }
@@ -176,10 +205,7 @@ function generateImages(startFrom = 1) {
   (async () => {
     for (let i = startFrom; i <= frameCount; i++) {
       const success = await generateFrame(i);
-      if (!success) {
-        console.warn(`프레임 ${i} 생성 실패로 중단됨.`);
-        break;
-      }
+      if (!success) break;
     }
     isGenerating = false;
   })();
@@ -190,10 +216,28 @@ function resumeFromLast() {
 }
 
 document.getElementById("resumeBtn")?.addEventListener("click", resumeFromLast);
-
 document.getElementById("generateBtn")?.addEventListener("click", () => generateImages());
-
 document.getElementById("downloadBtn")?.addEventListener("click", downloadZip);
+
+document.getElementById("inputImage").addEventListener("change", (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = document.createElement("img");
+    img.src = e.target.result;
+    img.width = 256;
+    img.style.cursor = "pointer";
+    img.onclick = () => {
+      const win = window.open();
+      win.document.write(`<img src="${img.src}" style="max-width:100%">`);
+    };
+    uploadedPreview.innerHTML = "";
+    uploadedPreview.appendChild(img);
+    autoSave();
+  };
+  reader.readAsDataURL(file);
+});
 
 function downloadZip() {
   if (frames.length === 0) return;
@@ -210,26 +254,7 @@ function downloadZip() {
   });
 }
 
-const inputImage = document.getElementById("inputImage");
-inputImage.addEventListener("change", (event) => {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const img = document.createElement("img");
-    img.src = e.target.result;
-    img.width = 256;
-    img.style.cursor = "pointer";
-    img.onclick = () => window.open(img.src, "_blank");
-    uploadedPreview.innerHTML = "";
-    uploadedPreview.appendChild(img);
-    autoSave();
-  };
-  reader.readAsDataURL(file);
-});
-
+initDB();
 ["projectName", "apiKey", "prompt", "frameCount", "imageSize"].forEach(id => {
   document.getElementById(id).addEventListener("input", autoSave);
 });
-
-loadProjectList();
