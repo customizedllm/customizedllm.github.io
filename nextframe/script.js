@@ -55,7 +55,19 @@ function loadProjectList() {
       const li = document.createElement("li");
       li.innerText = data.name || cursor.key;
       li.dataset.key = cursor.key;
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.innerText = "❌";
+      deleteBtn.style.marginLeft = "8px";
+      deleteBtn.onclick = (event) => {
+        event.stopPropagation();
+        if (confirm(`정말로 '${data.name}' 프로젝트를 삭제하시겠습니까?`)) {
+          deleteFromDB(cursor.key);
+        }
+      };
+
       li.onclick = () => loadProject(cursor.key);
+      li.appendChild(deleteBtn);
       list.appendChild(li);
       cursor.continue();
     }
