@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI 영상 프레임 생성기</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: auto; padding: 2em; }
+    input, textarea { width: 100%; margin-bottom: 1em; }
+    img { max-width: 100%; margin-top: 1em; border: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <h1>🎥 AI 영상 프레임 생성기</h1>
+  <input type="password" id="apiKey" placeholder="🔑 OpenAI API Key (sk-...)" />
+  <textarea id="prompt" rows="4" placeholder="A path through Suncheon Bay, 1st person view..."></textarea>
+  <input type="number" id="frameCount" placeholder="프레임 수 (예: 10)" />
+  <button onclick="generateImages()">🎬 영상 프레임 생성</button>
+  <div id="output"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
