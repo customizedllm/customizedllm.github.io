@@ -136,6 +136,20 @@ function validateInputs() {
   return true;
 }
 
+function createWhiteMask(width, height) {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => {
+      resolve(blob);
+    }, "image/png");
+  });
+}
+
 function generateImages(startFrom = 1) {
   if (!validateInputs() || isGenerating) return;
   isGenerating = true;
@@ -161,17 +175,21 @@ function generateImages(startFrom = 1) {
     form.append("n", "1");
     form.append("response_format", "b64_json");
 
-    // 이전 프레임 사용 or 첫 프레임은 업로드 이미지
+    let imageBlob;
     if (i === 1) {
-      form.append("image", originalImageFile);
+      imageBlob = originalImageFile;
     } else {
       const prevBase64 = frames[i - 2];
       const base64Data = prevBase64.split(",")[1];
       const binary = atob(base64Data);
-      const byteArray = new Uint8Array([...binary].map(char => char.charCodeAt(0)));
-      const blob = new Blob([byteArray], { type: "image/png" });
-      form.append("image", blob, `frame_${i - 1}.png`);
+      const byteArray = new Uint8Array([...binary].map(c => c.charCodeAt(0)));
+      imageBlob = new Blob([byteArray], { type: "image/png" });
     }
+    form.append("image", imageBlob, `frame_${i - 1}.png`);
+
+    const imageBitmap = await createImageBitmap(imageBlob);
+    const maskBlob = await createWhiteMask(imageBitmap.width, imageBitmap.height);
+    form.append("mask", maskBlob, "mask.png");
 
     const skeleton = document.createElement("div");
     skeleton.className = "skeleton";
