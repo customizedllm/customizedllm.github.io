@@ -42,7 +42,7 @@ function loadFromDB(id, callback) {
   req.onsuccess = () => callback(req.result);
 }
 
-function deleteFromDB(id) {
+function deleteFromDB(id) { 
   const tx = db.transaction(STORE_NAME, "readwrite");
   tx.objectStore(STORE_NAME).delete(id);
   tx.oncomplete = () => {
