@@ -29,12 +29,12 @@ function newProject() {
   uploadedPreview.innerHTML = "";
   output.innerHTML = "";
   frames = [];
+  autoSave();
 }
 
-function saveProject() {
-  if (!validateInputs()) return;
-
+function autoSave() {
   const name = document.getElementById("projectName").value.trim();
+  if (!name) return;
   const projectData = {
     apiKey: document.getElementById("apiKey").value.trim(),
     prompt: document.getElementById("prompt").value.trim(),
@@ -69,7 +69,18 @@ function loadProject(name) {
   document.getElementById("frameCount").value = data.frameCount;
   document.getElementById("imageSize").value = data.imageSize;
 
-  uploadedPreview.innerHTML = data.inputImageBase64 ? `<img src="${data.inputImageBase64}" width="256" />` : "";
+  if (data.inputImageBase64) {
+    const img = document.createElement("img");
+    img.src = data.inputImageBase64;
+    img.width = 256;
+    img.style.cursor = "pointer";
+    img.onclick = () => window.open(img.src, "_blank");
+    uploadedPreview.innerHTML = "";
+    uploadedPreview.appendChild(img);
+  } else {
+    uploadedPreview.innerHTML = "";
+  }
+
   output.innerHTML = "";
   frames = data.frames || [];
   frames.forEach((src, i) => {
@@ -77,6 +88,8 @@ function loadProject(name) {
     img.src = src;
     img.alt = `frame_${i + 1}`;
     img.width = 256;
+    img.style.cursor = "pointer";
+    img.onclick = () => window.open(img.src, "_blank");
     output.appendChild(img);
   });
 }
@@ -98,32 +111,55 @@ function generateImages() {
     "Authorization": `Bearer ${apiKey}`,
   };
 
-  for (let i = 1; i <= frameCount; i++) {
+  const uploadedImg = uploadedPreview.querySelector("img")?.src;
+
+  async function generateFrame(i) {
+    const skeleton = document.createElement("div");
+    skeleton.className = "skeleton";
+    skeleton.innerText = `프레임 ${i} 생성 중...`;
+    output.appendChild(skeleton);
+
     const body = {
-      prompt: prompt + ` (frame ${i})`,
+      prompt: `${prompt} (frame ${i})`,
       n: 1,
       size: `${width}x${height}`,
       response_format: "b64_json",
     };
 
-    fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        const b64 = data.data?.[0]?.b64_json;
-        if (b64) {
-          const img = document.createElement("img");
-          img.src = `data:image/png;base64,${b64}`;
-          img.alt = `frame_${i}`;
-          img.width = 256;
-          output.appendChild(img);
-          frames.push(img.src);
-        }
+    try {
+      const res = await fetch("https://api.openai.com/v1/images/generations", {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
       });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+      const b64 = data.data?.[0]?.b64_json;
+      if (b64) {
+        const img = document.createElement("img");
+        img.src = `data:image/png;base64,${b64}`;
+        img.alt = `frame_${i}`;
+        img.width = 256;
+        img.style.cursor = "pointer";
+        img.onclick = () => window.open(img.src, "_blank");
+        output.replaceChild(img, skeleton);
+        frames.push(img.src);
+        autoSave();
+      } else {
+        skeleton.innerText = `프레임 ${i} 실패`;
+      }
+    } catch (err) {
+      skeleton.innerText = `프레임 ${i} 오류: ${err.message}`;
+    }
   }
+
+  (async () => {
+    for (let i = 1; i <= frameCount; i++) {
+      await generateFrame(i);
+    }
+  })();
 }
 
 function downloadZip() {
@@ -141,16 +177,28 @@ function downloadZip() {
   });
 }
 
-// 이미지 업로드 미리보기
+// 이미지 업로드 미리보기 + 자동 저장
 const inputImage = document.getElementById("inputImage");
 inputImage.addEventListener("change", (event) => {
   const file = event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = (e) => {
-    uploadedPreview.innerHTML = `<img src="${e.target.result}" width="256" />`;
+    const img = document.createElement("img");
+    img.src = e.target.result;
+    img.width = 256;
+    img.style.cursor = "pointer";
+    img.onclick = () => window.open(img.src, "_blank");
+    uploadedPreview.innerHTML = "";
+    uploadedPreview.appendChild(img);
+    autoSave();
   };
   reader.readAsDataURL(file);
+});
+
+// 입력 필드 변경 시 자동 저장
+["projectName", "apiKey", "prompt", "frameCount", "imageSize"].forEach(id => {
+  document.getElementById(id).addEventListener("input", autoSave);
 });
 
 // 로딩 시 초기화
