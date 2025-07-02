@@ -1,175 +1,157 @@
-let uploadedImageBase64 = null;
-let generatedFrames = [];
+// script.js
+const output = document.getElementById("output");
+const uploadedPreview = document.getElementById("uploadedPreview");
+const errorBox = document.getElementById("errorBox");
+
+let frames = []; // base64 이미지 저장용
 
 function validateInputs() {
-  const requiredFields = ['projectName', 'apiKey', 'prompt', 'frameCount'];
-  let valid = true;
+  const projectName = document.getElementById("projectName").value.trim();
+  const apiKey = document.getElementById("apiKey").value.trim();
+  const prompt = document.getElementById("prompt").value.trim();
+  const frameCount = parseInt(document.getElementById("frameCount").value);
 
-  requiredFields.forEach(id => {
-    const field = document.getElementById(id);
-    if (!field.value.trim()) {
-      field.classList.add('error');
-      showError(`❗ '${field.placeholder || id}' 필드를 입력해주세요.`);
-      valid = false;
-    } else {
-      field.classList.remove('error');
-    }
-  });
-
-  return valid;
+  if (!projectName || !apiKey || !prompt || !frameCount) {
+    errorBox.innerText = "⚠ 모든 항목을 입력해주세요.";
+    return false;
+  }
+  errorBox.innerText = "";
+  return true;
 }
 
-function showError(message) {
-  let errorBox = document.getElementById("errorBox");
-  errorBox.innerText = message;
-  setTimeout(() => {
-    errorBox.innerText = '';
-  }, 3000);
+function newProject() {
+  document.getElementById("projectName").value = "";
+  document.getElementById("apiKey").value = "";
+  document.getElementById("prompt").value = "";
+  document.getElementById("frameCount").value = "";
+  document.getElementById("imageSize").value = "1024x576";
+  document.getElementById("inputImage").value = "";
+  uploadedPreview.innerHTML = "";
+  output.innerHTML = "";
+  frames = [];
 }
 
 function saveProject() {
   if (!validateInputs()) return;
-  const name = document.getElementById("projectName").value || `Project ${Date.now()}`;
-  const data = {
-    name: name,
-    apiKey: document.getElementById("apiKey").value,
-    prompt: document.getElementById("prompt").value,
-    frameCount: document.getElementById("frameCount").value,
+
+  const name = document.getElementById("projectName").value.trim();
+  const projectData = {
+    apiKey: document.getElementById("apiKey").value.trim(),
+    prompt: document.getElementById("prompt").value.trim(),
+    frameCount: parseInt(document.getElementById("frameCount").value),
     imageSize: document.getElementById("imageSize").value,
-    inputImageBase64: uploadedImageBase64,
-    frames: generatedFrames
+    inputImageBase64: uploadedPreview.querySelector("img")?.src || null,
+    frames: frames,
   };
-  localStorage.setItem(name, JSON.stringify(data));
+  localStorage.setItem(name, JSON.stringify(projectData));
   loadProjectList();
-}
-
-function loadProject(name) {
-  const data = JSON.parse(localStorage.getItem(name));
-  document.getElementById("projectName").value = data.name;
-  document.getElementById("apiKey").value = data.apiKey;
-  document.getElementById("prompt").value = data.prompt;
-  document.getElementById("frameCount").value = data.frameCount;
-  document.getElementById("imageSize").value = data.imageSize;
-  uploadedImageBase64 = data.inputImageBase64 || null;
-  generatedFrames = data.frames || [];
-
-  const uploadedPreview = document.getElementById("uploadedPreview");
-  const output = document.getElementById("output");
-  uploadedPreview.innerHTML = '';
-  output.innerHTML = '';
-
-  if (uploadedImageBase64) {
-    const uploaded = document.createElement("img");
-    uploaded.src = `data:image/png;base64,${uploadedImageBase64}`;
-    uploaded.className = 'preview-frame';
-    uploaded.alt = '업로드 이미지';
-    uploadedPreview.appendChild(uploaded);
-  }
-
-  for (let i = 0; i < generatedFrames.length; i++) {
-    const img = document.createElement("img");
-    img.src = generatedFrames[i];
-    img.className = 'preview-frame';
-    img.alt = `프레임 ${i + 1}`;
-    output.appendChild(img);
-  }
 }
 
 function loadProjectList() {
   const list = document.getElementById("projectList");
-  list.innerHTML = '';
-  for (let key in localStorage) {
-    if (localStorage.hasOwnProperty(key)) {
-      const li = document.createElement("li");
-      li.innerText = key;
-      li.onclick = () => loadProject(key);
-      list.appendChild(li);
-    }
+  list.innerHTML = "";
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    const li = document.createElement("li");
+    li.innerText = key;
+    li.onclick = () => loadProject(key);
+    list.appendChild(li);
   }
 }
 
-function newProject() {
-  document.getElementById("projectName").value = '';
-  document.getElementById("apiKey").value = '';
-  document.getElementById("prompt").value = '';
-  document.getElementById("frameCount").value = '';
-  document.getElementById("imageSize").value = '1024x576';
-  document.getElementById("inputImage").value = null;
-  document.getElementById("uploadedPreview").innerHTML = '';
-  document.getElementById("output").innerHTML = '';
-  uploadedImageBase64 = null;
-  generatedFrames = [];
+function loadProject(name) {
+  const data = JSON.parse(localStorage.getItem(name));
+  if (!data) return;
+
+  document.getElementById("projectName").value = name;
+  document.getElementById("apiKey").value = data.apiKey;
+  document.getElementById("prompt").value = data.prompt;
+  document.getElementById("frameCount").value = data.frameCount;
+  document.getElementById("imageSize").value = data.imageSize;
+
+  uploadedPreview.innerHTML = data.inputImageBase64 ? `<img src="${data.inputImageBase64}" width="256" />` : "";
+  output.innerHTML = "";
+  frames = data.frames || [];
+  frames.forEach((src, i) => {
+    const img = document.createElement("img");
+    img.src = src;
+    img.alt = `frame_${i + 1}`;
+    img.width = 256;
+    output.appendChild(img);
+  });
 }
 
 function generateImages() {
   if (!validateInputs()) return;
-  const inputImage = document.getElementById("inputImage").files[0];
+  output.innerHTML = "";
+  frames = [];
+
+  const apiKey = document.getElementById("apiKey").value.trim();
+  const prompt = document.getElementById("prompt").value.trim();
   const frameCount = parseInt(document.getElementById("frameCount").value);
-  const uploadedPreview = document.getElementById("uploadedPreview");
-  const output = document.getElementById("output");
-  output.innerHTML = '';
-  generatedFrames = [];
+  const size = document.getElementById("imageSize").value;
 
-  if (inputImage) {
-    const reader = new FileReader();
-    reader.onload = function () {
-      uploadedImageBase64 = reader.result.split(",")[1];
-      const uploaded = document.createElement("img");
-      uploaded.src = reader.result;
-      uploaded.className = 'preview-frame';
-      uploaded.alt = '업로드 이미지';
-      uploadedPreview.innerHTML = '';
-      uploadedPreview.appendChild(uploaded);
+  let [width, height] = size.split("x").map(Number);
 
-      for (let i = 1; i <= frameCount; i++) {
-        const img = document.createElement("img");
-        img.src = `data:image/png;base64,${uploadedImageBase64}`;
-        img.className = 'preview-frame';
-        img.alt = `프레임 ${i}`;
-        output.appendChild(img);
-        generatedFrames.push(img.src);
-      }
+  const headers = {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${apiKey}`,
+  };
+
+  for (let i = 1; i <= frameCount; i++) {
+    const body = {
+      prompt: prompt + ` (frame ${i})`,
+      n: 1,
+      size: `${width}x${height}`,
+      response_format: "b64_json",
     };
-    reader.readAsDataURL(inputImage);
-  } else if (uploadedImageBase64) {
-    const uploaded = document.createElement("img");
-    uploaded.src = `data:image/png;base64,${uploadedImageBase64}`;
-    uploaded.className = 'preview-frame';
-    uploaded.alt = '업로드 이미지';
-    uploadedPreview.innerHTML = '';
-    uploadedPreview.appendChild(uploaded);
 
-    for (let i = 1; i <= frameCount; i++) {
-      const img = document.createElement("img");
-      img.src = `data:image/png;base64,${uploadedImageBase64}`;
-      img.className = 'preview-frame';
-      img.alt = `프레임 ${i}`;
-      output.appendChild(img);
-      generatedFrames.push(img.src);
-    }
-  } else {
-    alert("이미지를 먼저 업로드해주세요. 이후 프레임은 이 이미지를 기반으로 생성됩니다.");
+    fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        const b64 = data.data?.[0]?.b64_json;
+        if (b64) {
+          const img = document.createElement("img");
+          img.src = `data:image/png;base64,${b64}`;
+          img.alt = `frame_${i}`;
+          img.width = 256;
+          output.appendChild(img);
+          frames.push(img.src);
+        }
+      });
   }
 }
 
 function downloadZip() {
-  if (generatedFrames.length === 0) {
-    alert("먼저 이미지를 생성해주세요.");
-    return;
-  }
-  import('https://cdn.jsdelivr.net/npm/jszip@3.10.0/dist/jszip.min.js').then(JSZip => {
-    const zip = new JSZip.default();
-    generatedFrames.forEach((dataUrl, i) => {
-      const base64 = dataUrl.split(',')[1];
-      zip.file(`frame_${i + 1}.png`, base64, { base64: true });
-    });
-    zip.generateAsync({ type: "blob" }).then(content => {
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(content);
-      a.download = "frames.zip";
-      a.click();
-    });
+  if (frames.length === 0) return;
+  const zip = new JSZip();
+  frames.forEach((src, i) => {
+    const base64Data = src.split(",")[1];
+    zip.file(`frame_${i + 1}.png`, base64Data, { base64: true });
+  });
+  zip.generateAsync({ type: "blob" }).then((blob) => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "frames.zip";
+    a.click();
   });
 }
 
-window.onload = loadProjectList;
+// 이미지 업로드 미리보기
+const inputImage = document.getElementById("inputImage");
+inputImage.addEventListener("change", (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    uploadedPreview.innerHTML = `<img src="${e.target.result}" width="256" />`;
+  };
+  reader.readAsDataURL(file);
+});
+
+// 로딩 시 초기화
+loadProjectList();
