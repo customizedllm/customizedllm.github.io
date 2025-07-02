@@ -4,6 +4,7 @@ const uploadedPreview = document.getElementById("uploadedPreview");
 const errorBox = document.getElementById("errorBox");
 
 let frames = []; // base64 이미지 저장용
+let lastSuccessFrame = 0;
 
 function validateInputs() {
   const projectName = document.getElementById("projectName").value.trim();
@@ -29,6 +30,7 @@ function newProject() {
   uploadedPreview.innerHTML = "";
   output.innerHTML = "";
   frames = [];
+  lastSuccessFrame = 0;
   autoSave();
 }
 
@@ -42,6 +44,7 @@ function autoSave() {
     imageSize: document.getElementById("imageSize").value,
     inputImageBase64: uploadedPreview.querySelector("img")?.src || null,
     frames: frames,
+    lastSuccessFrame: lastSuccessFrame
   };
   localStorage.setItem(name, JSON.stringify(projectData));
   loadProjectList();
@@ -68,6 +71,7 @@ function loadProject(name) {
   document.getElementById("prompt").value = data.prompt;
   document.getElementById("frameCount").value = data.frameCount;
   document.getElementById("imageSize").value = data.imageSize;
+  lastSuccessFrame = data.lastSuccessFrame || 0;
 
   if (data.inputImageBase64) {
     const img = document.createElement("img");
@@ -94,10 +98,13 @@ function loadProject(name) {
   });
 }
 
-function generateImages() {
+function generateImages(startFrom = 1) {
   if (!validateInputs()) return;
-  output.innerHTML = "";
-  frames = [];
+  if (startFrom === 1) {
+    output.innerHTML = "";
+    frames = [];
+    lastSuccessFrame = 0;
+  }
 
   const apiKey = document.getElementById("apiKey").value.trim();
   const prompt = document.getElementById("prompt").value.trim();
@@ -131,13 +138,13 @@ function generateImages() {
         body: JSON.stringify(body),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const errorData = await res.json();
-        const msg = errorData?.error?.message || `HTTP ${res.status}`;
-        throw new Error(msg);
+        const errorDetails = `코드: ${data?.error?.code || 'unknown'}\n메시지: ${data?.error?.message || '에러 발생'}\n매개변수: ${data?.error?.param || '없음'}`;
+        throw new Error(errorDetails);
       }
 
-      const data = await res.json();
       const b64 = data.data?.[0]?.b64_json;
       if (b64) {
         const img = document.createElement("img");
@@ -148,21 +155,35 @@ function generateImages() {
         img.onclick = () => window.open(img.src, "_blank");
         output.replaceChild(img, skeleton);
         frames.push(img.src);
+        lastSuccessFrame = i;
         autoSave();
+        return true;
       } else {
         skeleton.innerText = `프레임 ${i} 실패`;
+        return false;
       }
     } catch (err) {
-      skeleton.innerText = `프레임 ${i} 오류: ${err.message}`;
+      skeleton.innerText = `프레임 ${i} 오류:\n${err.message}`;
+      return false;
     }
   }
 
   (async () => {
-    for (let i = 1; i <= frameCount; i++) {
-      await generateFrame(i);
+    for (let i = startFrom; i <= frameCount; i++) {
+      const success = await generateFrame(i);
+      if (!success) {
+        console.warn(`프레임 ${i} 생성 실패로 중단됨.`);
+        break;
+      }
     }
   })();
 }
+
+function resumeFromLast() {
+  generateImages(lastSuccessFrame + 1);
+}
+
+document.getElementById("resumeBtn")?.addEventListener("click", resumeFromLast);
 
 function downloadZip() {
   if (frames.length === 0) return;
