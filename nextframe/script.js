@@ -109,7 +109,7 @@ function loadProject(id) {
       img.src = data.inputImageBase64;
       img.width = 256;
       img.style.cursor = "pointer";
-      img.onclick = () => window.open(img.src, "_blank", "popup");
+      img.onclick = () => openBase64ImageInWindow(img.src);
       uploadedPreview.innerHTML = "";
       uploadedPreview.appendChild(img);
     } else {
@@ -124,10 +124,29 @@ function loadProject(id) {
       img.alt = `frame_${i + 1}`;
       img.width = 256;
       img.style.cursor = "pointer";
-      img.onclick = () => window.open(img.src, "_blank", "popup");
+      img.onclick = () => openBase64ImageInWindow(img.src);
       output.appendChild(img);
     });
   });
+}
+
+function openBase64ImageInWindow(base64Src) {
+  const base64 = base64Src.split(",")[1];
+  const byteCharacters = atob(base64);
+  const byteNumbers = Array.from(byteCharacters, c => c.charCodeAt(0));
+  const byteArray = new Uint8Array(byteNumbers);
+  const blob = new Blob([byteArray], { type: "image/png" });
+  const url = URL.createObjectURL(blob);
+  const win = window.open("", "popup", "width=800,height=800");
+  if (win) {
+    const imgTag = win.document.createElement("img");
+    imgTag.src = url;
+    imgTag.style.maxWidth = "100%";
+    win.document.body.style.margin = "0";
+    win.document.body.appendChild(imgTag);
+  } else {
+    alert("팝업이 차단되었습니다. 팝업 허용을 설정해주세요.");
+  }
 }
 
 function validateInputs() {
