@@ -3,7 +3,7 @@ const output = document.getElementById("output");
 const uploadedPreview = document.getElementById("uploadedPreview");
 const errorBox = document.getElementById("errorBox");
 
-let frames = []; // base64 이미지 저장용
+let frames = [];
 let lastSuccessFrame = 0;
 let isGenerating = false;
 let currentProjectId = null;
@@ -69,7 +69,7 @@ function autoSave() {
     id: currentProjectId || generateUUID(),
     name: name,
     apiKey: document.getElementById("apiKey").value.trim(),
-    prompt: document.getElementById("prompt").value.trim(),
+    prompt: "Continue the same scene from previous frame with slight movement forward, seamless transition.",
     frameCount: parseInt(document.getElementById("frameCount").value),
     imageSize: document.getElementById("imageSize").value,
     inputImageBase64: uploadedPreview.querySelector("img")?.src || null,
@@ -121,15 +121,10 @@ function loadProject(id) {
 function validateInputs() {
   const projectName = document.getElementById("projectName").value.trim();
   const apiKey = document.getElementById("apiKey").value.trim();
-  const prompt = document.getElementById("prompt").value.trim();
   const frameCount = parseInt(document.getElementById("frameCount").value);
-  if (!projectName || !apiKey || !prompt || !frameCount) {
-    errorBox.innerText = "⚠ 모든 항목을 입력해주세요.";
-    return false;
-  }
   const image = document.getElementById("inputImage").files?.[0];
-  if (!image || !image.name.endsWith(".png")) {
-    errorBox.innerText = "⚠ 투명 배경 PNG 이미지를 업로드해주세요.";
+  if (!projectName || !apiKey || !frameCount || !image || !image.name.endsWith(".png")) {
+    errorBox.innerText = "⚠ 모든 항목을 입력하고 PNG 이미지를 업로드해주세요.";
     return false;
   }
   errorBox.innerText = "";
@@ -173,6 +168,7 @@ function generateImages(startFrom = 1) {
     const form = new FormData();
     form.append("prompt", `${prompt} (frame ${i})`);
     form.append("n", "1");
+    form.append("size", "1024x1024");
     form.append("response_format", "b64_json");
 
     let imageBlob;
@@ -247,10 +243,6 @@ function resumeFromLast() {
   generateImages(lastSuccessFrame + 1);
 }
 
-document.getElementById("resumeBtn")?.addEventListener("click", resumeFromLast);
-document.getElementById("generateBtn")?.addEventListener("click", () => generateImages());
-document.getElementById("downloadBtn")?.addEventListener("click", downloadZip);
-
 document.getElementById("inputImage").addEventListener("change", (event) => {
   const file = event.target.files[0];
   if (!file) return;
@@ -283,7 +275,12 @@ function downloadZip() {
   });
 }
 
-initDB();
+document.getElementById("resumeBtn")?.addEventListener("click", resumeFromLast);
+document.getElementById("generateBtn")?.addEventListener("click", () => generateImages());
+document.getElementById("downloadBtn")?.addEventListener("click", downloadZip);
+
 ["projectName", "apiKey", "prompt", "frameCount", "imageSize"].forEach(id => {
   document.getElementById(id).addEventListener("input", autoSave);
 });
+
+initDB();
