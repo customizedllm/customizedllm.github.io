@@ -5,6 +5,7 @@ const errorBox = document.getElementById("errorBox");
 
 let frames = []; // base64 이미지 저장용
 let lastSuccessFrame = 0;
+let isGenerating = false; // 중복 호출 방지
 
 function validateInputs() {
   const projectName = document.getElementById("projectName").value.trim();
@@ -100,6 +101,9 @@ function loadProject(name) {
 
 function generateImages(startFrom = 1) {
   if (!validateInputs()) return;
+  if (isGenerating) return;
+  isGenerating = true;
+
   if (startFrom === 1) {
     output.innerHTML = "";
     frames = [];
@@ -164,6 +168,7 @@ function generateImages(startFrom = 1) {
       }
     } catch (err) {
       skeleton.innerText = `프레임 ${i} 오류:\n${err.message}`;
+      errorBox.innerText = `⚠ 프레임 ${i} 생성 중 오류 발생: ${err.message}`;
       return false;
     }
   }
@@ -176,6 +181,7 @@ function generateImages(startFrom = 1) {
         break;
       }
     }
+    isGenerating = false;
   })();
 }
 
@@ -184,6 +190,10 @@ function resumeFromLast() {
 }
 
 document.getElementById("resumeBtn")?.addEventListener("click", resumeFromLast);
+
+document.getElementById("generateBtn")?.addEventListener("click", () => generateImages());
+
+document.getElementById("downloadBtn")?.addEventListener("click", downloadZip);
 
 function downloadZip() {
   if (frames.length === 0) return;
@@ -200,7 +210,6 @@ function downloadZip() {
   });
 }
 
-// 이미지 업로드 미리보기 + 자동 저장
 const inputImage = document.getElementById("inputImage");
 inputImage.addEventListener("change", (event) => {
   const file = event.target.files[0];
@@ -219,10 +228,8 @@ inputImage.addEventListener("change", (event) => {
   reader.readAsDataURL(file);
 });
 
-// 입력 필드 변경 시 자동 저장
 ["projectName", "apiKey", "prompt", "frameCount", "imageSize"].forEach(id => {
   document.getElementById(id).addEventListener("input", autoSave);
 });
 
-// 로딩 시 초기화
 loadProjectList();
