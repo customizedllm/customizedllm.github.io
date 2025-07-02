@@ -97,7 +97,7 @@ function loadProject(id) {
       img.src = data.inputImageBase64;
       img.width = 256;
       img.style.cursor = "pointer";
-      img.onclick = () => window.open(img.src, "_blank");
+      img.onclick = () => window.open(img.src, "_blank", "popup");
       uploadedPreview.innerHTML = "";
       uploadedPreview.appendChild(img);
     } else {
@@ -112,7 +112,7 @@ function loadProject(id) {
       img.alt = `frame_${i + 1}`;
       img.width = 256;
       img.style.cursor = "pointer";
-      img.onclick = () => window.open(img.src, "_blank");
+      img.onclick = () => window.open(img.src, "_blank", "popup");
       output.appendChild(img);
     });
   });
@@ -149,8 +149,7 @@ function generateImages(startFrom = 1) {
   const apiKey = document.getElementById("apiKey").value.trim();
   const prompt = document.getElementById("prompt").value.trim();
   const frameCount = parseInt(document.getElementById("frameCount").value);
-  const imageFile = document.getElementById("inputImage").files?.[0];
-  if (!imageFile) return;
+  const originalImageFile = document.getElementById("inputImage").files?.[0];
 
   const headers = {
     "Authorization": `Bearer ${apiKey}`
@@ -161,7 +160,18 @@ function generateImages(startFrom = 1) {
     form.append("prompt", `${prompt} (frame ${i})`);
     form.append("n", "1");
     form.append("response_format", "b64_json");
-    form.append("image", imageFile);
+
+    // 이전 프레임 사용 or 첫 프레임은 업로드 이미지
+    if (i === 1) {
+      form.append("image", originalImageFile);
+    } else {
+      const prevBase64 = frames[i - 2];
+      const base64Data = prevBase64.split(",")[1];
+      const binary = atob(base64Data);
+      const byteArray = new Uint8Array([...binary].map(char => char.charCodeAt(0)));
+      const blob = new Blob([byteArray], { type: "image/png" });
+      form.append("image", blob, `frame_${i - 1}.png`);
+    }
 
     const skeleton = document.createElement("div");
     skeleton.className = "skeleton";
@@ -189,7 +199,7 @@ function generateImages(startFrom = 1) {
         img.alt = `frame_${i}`;
         img.width = 256;
         img.style.cursor = "pointer";
-        img.onclick = () => window.open(img.src, "_blank");
+        img.onclick = () => window.open(img.src, "_blank", "popup");
         output.replaceChild(img, skeleton);
         frames.push(img.src);
         lastSuccessFrame = i;
@@ -232,7 +242,7 @@ document.getElementById("inputImage").addEventListener("change", (event) => {
     img.src = e.target.result;
     img.width = 256;
     img.style.cursor = "pointer";
-    img.onclick = () => window.open(img.src, "_blank");
+    img.onclick = () => window.open(img.src, "_blank", "popup");
     uploadedPreview.innerHTML = "";
     uploadedPreview.appendChild(img);
     autoSave();
