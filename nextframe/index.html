@@ -5,16 +5,28 @@
   <title>AI 영상 프레임 생성기</title>
   <style>
     body { font-family: sans-serif; max-width: 600px; margin: auto; padding: 2em; }
-    input, textarea { width: 100%; margin-bottom: 1em; }
+    input, textarea, select { width: 100%; margin-bottom: 1em; padding: 0.5em; }
     img { max-width: 100%; margin-top: 1em; border: 1px solid #ccc; }
   </style>
 </head>
 <body>
   <h1>🎥 AI 영상 프레임 생성기</h1>
+
   <input type="password" id="apiKey" placeholder="🔑 OpenAI API Key (sk-...)" />
+
   <textarea id="prompt" rows="4" placeholder="A path through Suncheon Bay, 1st person view..."></textarea>
-  <input type="number" id="frameCount" placeholder="프레임 수 (예: 10)" />
+
+  <input type="number" id="frameCount" placeholder="프레임 수 (예: 10)" min="1" max="100" />
+
+  <label for="imageSize">📏 이미지 사이즈</label>
+  <select id="imageSize">
+    <option value="1024x1024">1024 x 1024 (정사각형)</option>
+    <option value="1024x576" selected>1024 x 576 (16:9 와이드)</option>
+    <option value="512x512">512 x 512 (빠름)</option>
+  </select>
+
   <button onclick="generateImages()">🎬 영상 프레임 생성</button>
+
   <div id="output"></div>
 
   <script src="script.js"></script>
