@@ -3,13 +3,18 @@ const output = document.getElementById("output");
 const uploadedPreview = document.getElementById("uploadedPreview");
 const errorBox = document.getElementById("errorBox");
 
-let frames = []; // base64 이미지 저장용 (IndexedDB에 저장)
+let frames = []; // base64 이미지 저장용
 let lastSuccessFrame = 0;
 let isGenerating = false;
+let currentProjectId = null;
 
 let db;
 const DB_NAME = "DeforumDB";
 const STORE_NAME = "projects";
+
+function generateUUID() {
+  return crypto.randomUUID();
+}
 
 function initDB() {
   const request = indexedDB.open(DB_NAME, 1);
@@ -26,14 +31,14 @@ function initDB() {
   };
 }
 
-function saveToDB(name, data) {
+function saveToDB(id, data) {
   const tx = db.transaction(STORE_NAME, "readwrite");
-  tx.objectStore(STORE_NAME).put(data, name);
+  tx.objectStore(STORE_NAME).put(data, id);
 }
 
-function loadFromDB(name, callback) {
+function loadFromDB(id, callback) {
   const tx = db.transaction(STORE_NAME, "readonly");
-  const req = tx.objectStore(STORE_NAME).get(name);
+  const req = tx.objectStore(STORE_NAME).get(id);
   req.onsuccess = () => callback(req.result);
 }
 
@@ -46,8 +51,10 @@ function loadProjectList() {
   req.onsuccess = (e) => {
     const cursor = e.target.result;
     if (cursor) {
+      const data = cursor.value;
       const li = document.createElement("li");
-      li.innerText = cursor.key;
+      li.innerText = data.name || cursor.key;
+      li.dataset.key = cursor.key;
       li.onclick = () => loadProject(cursor.key);
       list.appendChild(li);
       cursor.continue();
@@ -59,6 +66,8 @@ function autoSave() {
   const name = document.getElementById("projectName").value.trim();
   if (!name) return;
   const projectData = {
+    id: currentProjectId || generateUUID(),
+    name: name,
     apiKey: document.getElementById("apiKey").value.trim(),
     prompt: document.getElementById("prompt").value.trim(),
     frameCount: parseInt(document.getElementById("frameCount").value),
@@ -67,14 +76,16 @@ function autoSave() {
     frames: frames,
     lastSuccessFrame: lastSuccessFrame
   };
-  saveToDB(name, projectData);
+  currentProjectId = projectData.id;
+  saveToDB(projectData.id, projectData);
   loadProjectList();
 }
 
-function loadProject(name) {
-  loadFromDB(name, (data) => {
+function loadProject(id) {
+  loadFromDB(id, (data) => {
     if (!data) return;
-    document.getElementById("projectName").value = name;
+    currentProjectId = id;
+    document.getElementById("projectName").value = data.name || id;
     document.getElementById("apiKey").value = data.apiKey;
     document.getElementById("prompt").value = data.prompt;
     document.getElementById("frameCount").value = data.frameCount;
@@ -86,10 +97,7 @@ function loadProject(name) {
       img.src = data.inputImageBase64;
       img.width = 256;
       img.style.cursor = "pointer";
-      img.onclick = () => {
-        const win = window.open();
-        win.document.write(`<img src="${img.src}" style="max-width:100%">`);
-      };
+      img.onclick = () => window.open(img.src, "_blank");
       uploadedPreview.innerHTML = "";
       uploadedPreview.appendChild(img);
     } else {
@@ -104,10 +112,7 @@ function loadProject(name) {
       img.alt = `frame_${i + 1}`;
       img.width = 256;
       img.style.cursor = "pointer";
-      img.onclick = () => {
-        const win = window.open();
-        win.document.write(`<img src="${img.src}" style="max-width:100%">`);
-      };
+      img.onclick = () => window.open(img.src, "_blank");
       output.appendChild(img);
     });
   });
@@ -144,33 +149,30 @@ function generateImages(startFrom = 1) {
   const apiKey = document.getElementById("apiKey").value.trim();
   const prompt = document.getElementById("prompt").value.trim();
   const frameCount = parseInt(document.getElementById("frameCount").value);
-
   const imageFile = document.getElementById("inputImage").files?.[0];
   if (!imageFile) return;
-
-  const form = new FormData();
-  form.append("prompt", prompt);
-  form.append("n", "1");
-  form.append("response_format", "b64_json");
-  form.append("image", imageFile);
 
   const headers = {
     "Authorization": `Bearer ${apiKey}`
   };
 
   async function generateFrame(i) {
+    const form = new FormData();
+    form.append("prompt", `${prompt} (frame ${i})`);
+    form.append("n", "1");
+    form.append("response_format", "b64_json");
+    form.append("image", imageFile);
+
     const skeleton = document.createElement("div");
     skeleton.className = "skeleton";
     skeleton.innerText = `프레임 ${i} 생성 중...`;
     output.appendChild(skeleton);
 
-    form.set("prompt", `${prompt} (frame ${i})`);
-
     try {
       const res = await fetch("https://api.openai.com/v1/images/edits", {
         method: "POST",
         headers,
-        body: form,
+        body: form
       });
 
       const data = await res.json();
@@ -187,10 +189,7 @@ function generateImages(startFrom = 1) {
         img.alt = `frame_${i}`;
         img.width = 256;
         img.style.cursor = "pointer";
-        img.onclick = () => {
-          const win = window.open();
-          win.document.write(`<img src="${img.src}" style="max-width:100%">`);
-        };
+        img.onclick = () => window.open(img.src, "_blank");
         output.replaceChild(img, skeleton);
         frames.push(img.src);
         lastSuccessFrame = i;
@@ -233,10 +232,7 @@ document.getElementById("inputImage").addEventListener("change", (event) => {
     img.src = e.target.result;
     img.width = 256;
     img.style.cursor = "pointer";
-    img.onclick = () => {
-      const win = window.open();
-      win.document.write(`<img src="${img.src}" style="max-width:100%">`);
-    };
+    img.onclick = () => window.open(img.src, "_blank");
     uploadedPreview.innerHTML = "";
     uploadedPreview.appendChild(img);
     autoSave();
