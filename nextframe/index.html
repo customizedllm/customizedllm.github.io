@@ -14,15 +14,20 @@
       <input id="apiKey" type="text" placeholder="OpenAI API Key (필수)" />
       <textarea id="prompt" placeholder="프롬프트를 입력하세요 (필수)"></textarea>
       <input id="frameCount" type="number" placeholder="프레임 수 (예: 10)" />
-      <select id="imageSize">
-        <option value="256x256">256x256</option>
-        <option value="512x512">512x512</option>
-        <option value="1024x1024" selected>1024x1024</option>
+      <select id="imageSize" disabled>
+        <option value="1024x1024" selected>1024x1024 (고정)</option>
       </select>
-      <input id="inputImage" type="file" accept="image/*" />
+
+      <input id="inputImage" type="file" accept="image/png" />
       <div id="uploadedPreview"></div>
-      <button onclick="generateImages()">이미지 생성</button>
-      <button onclick="downloadZip()">ZIP으로 저장</button>
+      <small style="color:crimson">
+        ⚠️ 업로드 이미지는 반드시 <b>배경이 투명한 PNG</b> 형식이어야 합니다. (image edits API 요구사항)
+      </small>
+
+      <button id="generateBtn">이미지 생성</button>
+      <button id="resumeBtn">이어 생성하기</button>
+      <button id="downloadBtn">ZIP으로 저장</button>
+
       <div id="errorBox"></div>
       <div id="output"></div>
     </div>

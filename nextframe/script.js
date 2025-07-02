@@ -122,6 +122,11 @@ function validateInputs() {
     errorBox.innerText = "⚠ 모든 항목을 입력해주세요.";
     return false;
   }
+  const image = document.getElementById("inputImage").files?.[0];
+  if (!image || !image.name.endsWith(".png")) {
+    errorBox.innerText = "⚠ 투명 배경 PNG 이미지를 업로드해주세요.";
+    return false;
+  }
   errorBox.innerText = "";
   return true;
 }
@@ -139,12 +144,18 @@ function generateImages(startFrom = 1) {
   const apiKey = document.getElementById("apiKey").value.trim();
   const prompt = document.getElementById("prompt").value.trim();
   const frameCount = parseInt(document.getElementById("frameCount").value);
-  const size = document.getElementById("imageSize").value;
-  const [width, height] = size.split("x");
+
+  const imageFile = document.getElementById("inputImage").files?.[0];
+  if (!imageFile) return;
+
+  const form = new FormData();
+  form.append("prompt", prompt);
+  form.append("n", "1");
+  form.append("response_format", "b64_json");
+  form.append("image", imageFile);
 
   const headers = {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${apiKey}`,
+    "Authorization": `Bearer ${apiKey}`
   };
 
   async function generateFrame(i) {
@@ -153,19 +164,13 @@ function generateImages(startFrom = 1) {
     skeleton.innerText = `프레임 ${i} 생성 중...`;
     output.appendChild(skeleton);
 
-    const body = {
-      model: "dall-e-2",
-      prompt: `${prompt} (frame ${i})`,
-      n: 1,
-      size: `${width}x${height}`,
-      response_format: "b64_json",
-    };
+    form.set("prompt", `${prompt} (frame ${i})`);
 
     try {
-      const res = await fetch("https://api.openai.com/v1/images/generations", {
+      const res = await fetch("https://api.openai.com/v1/images/edits", {
         method: "POST",
         headers,
-        body: JSON.stringify(body),
+        body: form,
       });
 
       const data = await res.json();
