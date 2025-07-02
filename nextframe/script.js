@@ -72,13 +72,21 @@ function newProject() {
 function generateImages() {
   if (!validateInputs()) return;
   const inputImage = document.getElementById("inputImage").files[0];
+  const frameCount = parseInt(document.getElementById("frameCount").value);
+  const output = document.getElementById("output");
+  output.innerHTML = '';
 
   if (inputImage) {
     const reader = new FileReader();
     reader.onload = function () {
       const base64Image = reader.result.split(",")[1];
-      console.log("Base64 이미지 준비 완료, 다음 프레임 생성에 사용 가능:", base64Image);
-      // 여기에 다음 프레임 생성 API 호출 로직 작성 가능
+      for (let i = 1; i <= frameCount; i++) {
+        const img = document.createElement("img");
+        img.src = `data:image/png;base64,${base64Image}`; // 여기에 실제 생성된 이미지로 대체 필요
+        img.className = 'preview-frame';
+        img.alt = `프레임 ${i}`;
+        output.appendChild(img);
+      }
     };
     reader.readAsDataURL(inputImage);
   } else {

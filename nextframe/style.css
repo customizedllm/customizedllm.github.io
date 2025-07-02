@@ -59,3 +59,17 @@ input.error, textarea.error {
   margin: 10px 0;
   border-radius: 5px;
 }
+
+#output {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 1em;
+  gap: 10px;
+  justify-content: flex-start;
+}
+
+.preview-frame {
+  width: 240px;
+  height: auto;
+  border: 1px solid #ccc;
+}
